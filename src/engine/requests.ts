@@ -68,6 +68,7 @@ import {
   sessionWithMeta,
   groupAdminKeys,
   groupSharedKeys,
+  withinContexts,
   type MySubscribeRequest,
 } from "src/engine/state"
 
@@ -158,12 +159,7 @@ export const loadGroups = async (rawAddrs: string[], explicitRelays: string[] = 
 
   if (addrs.length > 0) {
     const filters = [{kinds: [34550, 35834], authors, "#d": identifiers}]
-    const relays = ctx.app.router
-      .merge([
-        ctx.app.router.product(addrs, explicitRelays),
-        ctx.app.router.WithinMultipleContexts(addrs),
-      ])
-      .getUrls()
+    const relays = withinContexts(addrs, explicitRelays).getUrls()
 
     return load({relays, filters, skipCache: true, forcePlatform: false})
   }
@@ -175,7 +171,7 @@ export const loadGroupMessages = async (addrs: string[]) => {
     const pubkeys = keys.filter(k => k.group === address).map(k => k.pubkey)
 
     await pullConservatively({
-      relays: ctx.app.router.WithinContext(address).getUrls(),
+      relays: withinContexts([address]).getUrls(),
       filters: [{kinds: [WRAP], "#p": pubkeys}],
     })
   }
@@ -183,7 +179,7 @@ export const loadGroupMessages = async (addrs: string[]) => {
 
 export const loadCommunityMessages = async (addrs: string[]) => {
   await pullConservatively({
-    relays: ctx.app.router.WithinMultipleContexts(addrs).getUrls(),
+    relays: withinContexts(addrs).getUrls(),
     filters: [{kinds: [...noteKinds, ...repostKinds], "#a": addrs}],
   })
 }
@@ -296,8 +292,8 @@ export const feedLoader = new FeedLoader({
       event: await signer.get().sign(createEvent(kind, {tags})),
       relays:
         request.relays?.length > 0
-          ? ctx.app.router.fromRelays(request.relays).getUrls()
-          : ctx.app.router.Messages(tags.filter(nthEq(0, "p")).map(nth(1))).getUrls(),
+          ? ctx.app.router.FromRelays(request.relays).getUrls()
+          : ctx.app.router.ForPubkeys(tags.filter(nthEq(0, "p")).map(nth(1))).getUrls(),
     })
 
     await new Promise<void>(resolve => {
@@ -344,7 +340,7 @@ export const loadNotifications = () => {
   const filter = {kinds: getNotificationKinds(), "#p": [pubkey.get()]}
 
   return pullConservatively({
-    relays: ctx.app.router.ReadRelays().getUrls(),
+    relays: ctx.app.router.ForUser().getUrls(),
     filters: [addSinceToFilter(filter, int(WEEK))],
   })
 }
@@ -355,7 +351,7 @@ export const listenForNotifications = () => {
   subscribePersistent({
     timeout: 30_000,
     skipCache: true,
-    relays: ctx.app.router.User().getUrls(),
+    relays: ctx.app.router.ForUser().getUrls(),
     filters: [addSinceToFilter(filter)],
   })
 }
@@ -401,7 +397,7 @@ export const loadFeedsAndLists = () =>
 
 export const loadMessages = () =>
   pullConservatively({
-    relays: ctx.app.router.User().getUrls(),
+    relays: ctx.app.router.UserInbox().getUrls(),
     filters: [
       {kinds: [DEPRECATED_DIRECT_MESSAGE], authors: [pubkey.get()]},
       {kinds: [DEPRECATED_DIRECT_MESSAGE, WRAP], "#p": [pubkey.get()]},
@@ -414,7 +410,7 @@ export const listenForMessages = (pubkeys: string[]) => {
   return subscribePersistent({
     skipCache: true,
     forcePlatform: false,
-    relays: ctx.app.router.Messages(pubkeys).getUrls(),
+    relays: ctx.app.router.PubkeyInboxes(pubkeys).getUrls(),
     filters: [
       {kinds: [DEPRECATED_DIRECT_MESSAGE], authors: allPubkeys, "#p": allPubkeys},
       {kinds: [WRAP], "#p": [pubkey.get()]},
@@ -426,7 +422,7 @@ export const loadHandlers = () =>
   load({
     skipCache: true,
     forcePlatform: false,
-    relays: ctx.app.router.ReadRelays().getUrls().concat("wss://relay.nostr.band/"),
+    relays: ctx.app.router.ForUser().getUrls().concat("wss://relay.nostr.band/"),
     filters: [
       addSinceToFilter({
         kinds: [HANDLER_RECOMMENDATION],

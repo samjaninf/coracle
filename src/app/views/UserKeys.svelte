@@ -56,7 +56,7 @@
     // Look for group definition events by this pubkey so we can associate the key with the group
     const sub = subscribe({
       closeOnEose: true,
-      relays: ctx.app.router.User().getUrls().concat(relays),
+      relays: ctx.app.router.UserInbox().getUrls().concat(relays),
       filters: [
         {kinds: [GROUP], authors: [pubkey], limit: 1},
         {kinds: [WRAP], "#p": [pubkey], limit: 500},

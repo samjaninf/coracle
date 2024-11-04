@@ -177,7 +177,7 @@
   const broadcast = () => {
     publish({
       event: asSignedEvent(note as SignedEvent),
-      relays: ctx.app.router.WriteRelays().getUrls(),
+      relays: ctx.app.router.FromUser().getUrls(),
     })
 
     showInfo("Note has been re-published!")

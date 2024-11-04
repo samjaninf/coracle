@@ -1,5 +1,5 @@
 <script lang="ts">
-  import {ctx, without, identity} from "@welshman/lib"
+  import {without, identity} from "@welshman/lib"
   import {getAddress, displayRelayUrl} from "@welshman/util"
   import {relaySearch} from "@welshman/app"
   import {onMount} from "svelte"
@@ -16,7 +16,7 @@
   import GroupCircle from "src/app/shared/GroupCircle.svelte"
   import PersonSelect from "src/app/shared/PersonSelect.svelte"
   import {router} from "src/app/util/router"
-  import {groupMetaSearch, displayGroupByAddress} from "src/engine"
+  import {groupMetaSearch, displayGroupByAddress, withinContexts} from "src/engine"
 
   export let initialPubkey = null
   export let initialGroupAddress = null
@@ -59,7 +59,7 @@
         ...groups,
         {
           address: address,
-          relay: ctx.app.router.WithinContext(address).getUrl(),
+          relay: withinContexts([address]).getUrl(),
           claim: "",
         },
       ]
@@ -109,7 +109,7 @@
       showSection("groups")
       groups = groups.concat({
         address: initialGroupAddress,
-        relay: ctx.app.router.WithinContext(initialGroupAddress).getUrl(),
+        relay: withinContexts([initialGroupAddress]).getUrl(),
         claim: "",
       })
     }

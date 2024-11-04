@@ -174,7 +174,7 @@
   onMount(async () => {
     if (!event.pubkey) {
       event = await loadEvent(event.id, {
-        relays: ctx.app.router.fromRelays(relays).getUrls(),
+        relays: ctx.app.router.FromRelays(relays).getUrls(),
       })
     }
 
@@ -199,7 +199,7 @@
       }
 
       load({
-        relays: ctx.app.router.EventChildren(event).getUrls(),
+        relays: ctx.app.router.Replies(event).getUrls(),
         filters: getReplyFilters([event], {kinds}),
         onEvent: batch(200, events => {
           context = uniqBy(prop("id"), context.concat(events))

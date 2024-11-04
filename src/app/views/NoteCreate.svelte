@@ -121,7 +121,7 @@
 
       // Re-broadcast the note we're quoting
       if (!opts.groups.length) {
-        publish({event: quote, relays: ctx.app.router.WriteRelays().getUrls()})
+        publish({event: quote, relays: ctx.app.router.FromUser().getUrls()})
       }
     }
 

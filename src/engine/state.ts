@@ -110,6 +110,8 @@ import {
   getUserWotScore,
   sessions,
   maxWot,
+  addNoFallbacks,
+  addMinimalFallbacks,
 } from "@welshman/app"
 import {parseJson, fromCsv, SearchHelper} from "src/util/misc"
 import {Collection as CollectionStore} from "src/util/store"
@@ -264,7 +266,6 @@ export const ensureUnwrapped = async (event: TrustedEvent) => {
 
 export const defaultSettings = {
   relay_limit: 5,
-  relay_redundancy: 2,
   default_zap: 21,
   show_media: true,
   muted_words: [],
@@ -1133,12 +1134,22 @@ export const createAndPublish = async ({
   return publish({event, relays, verb, timeout, forcePlatform})
 }
 
+export const withinContexts = (addresses: string[], relays: string[] = []) =>
+  ctx.app.router.merge([
+    ctx.app.router.FromRelays(relays),
+    ...addresses.map(address => {
+      const policy = isGroupAddress(address) ? addNoFallbacks : addMinimalFallbacks
+
+      return ctx.app.router.FromRelays(getGroupRelayUrls(address)).policy(policy)
+    }),
+  ])
+
 // Publish
 
 export const mentionGroup = (address: string, ...args: unknown[]) => [
   "a",
   address,
-  ctx.app.router.WithinContext(address).getUrl(),
+  withinContexts([address]).getUrl(),
 ]
 
 export const tagsFromContent = (content: string) => {
@@ -1217,7 +1228,7 @@ export class ThreadLoader {
     if (filteredIds.length > 0) {
       load({
         filters: getIdFilters(filteredIds),
-        relays: ctx.app.router.fromRelays(this.relays).getUrls(),
+        relays: ctx.app.router.FromRelays(this.relays).getUrls(),
         onEvent: batch(300, (events: TrustedEvent[]) => {
           this.addToThread(events)
           this.loadNotes(events.flatMap(getAncestorIds))
@@ -1356,7 +1367,6 @@ if (!db) {
       indexerRelays: env.INDEXER_RELAYS,
       requestTimeout: 10000,
       router: makeRouter({
-        getRedundancy: () => getSetting("relay_redundancy"),
         getLimit: () => getSetting("relay_limit"),
       }),
     }),

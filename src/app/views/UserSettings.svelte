@@ -26,8 +26,6 @@
   const formatPercent = d => String(Math.round(d * 100))
   const parsePercent = p => parseInt(p) / 100
 
-  $: values.relay_redundancy = Math.round(Math.log10(values.relay_limit) * 4)
-
   document.title = "Settings"
 </script>
 

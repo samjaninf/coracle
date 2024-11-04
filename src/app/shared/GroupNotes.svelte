@@ -45,7 +45,7 @@
     } else {
       const relays = ctx.app.router
         .merge([
-          ctx.app.router.fromRelays([relay]),
+          ctx.app.router.FromRelays([relay]),
           ctx.app.router.FromPubkeys([Address.from(address).pubkey]),
         ])
         .getUrls()

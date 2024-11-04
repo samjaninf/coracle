@@ -78,7 +78,7 @@ projections.addHandler(24, (e: TrustedEvent) => {
     load({
       delay: 5000,
       skipCache: true,
-      relays: ctx.app.router.fromRelays(relays).getUrls(),
+      relays: ctx.app.router.FromRelays(relays).getUrls(),
       filters: [
         ...getIdFilters([address]),
         {kinds: [WRAP], "#p": [pubkey]},

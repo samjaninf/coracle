@@ -91,6 +91,7 @@ import {
   userSeenStatusEvents,
   getChannelIdFromEvent,
   userFeedFavorites,
+  withinContexts,
 } from "src/engine/state"
 
 // Helpers
@@ -266,7 +267,7 @@ const addGroupATags = (template, addresses) => ({
 // relays, and can straddle public/private contexts.
 
 export const publishToGroupAdmin = async (address, template) => {
-  const relays = ctx.app.router.WithinContext(address).getUrls()
+  const relays = withinContexts([address]).getUrls()
   const pubkeys = [Address.from(address).pubkey, session.get().pubkey]
   const expireTag = [["expiration", String(now() + seconds(30, "day"))]]
   const helper = Nip59.fromSigner(signer.get())
@@ -279,9 +280,7 @@ export const publishToGroupAdmin = async (address, template) => {
 }
 
 export const publishAsGroupAdminPublicly = async (address, template, relays = []) => {
-  const _relays = ctx.app.router
-    .merge([ctx.app.router.fromRelays(relays), ctx.app.router.WithinContext(address)])
-    .getUrls()
+  const _relays = withinContexts([address], relays).getUrls()
   const adminKey = deriveAdminKeyForGroup(address).get()
   const event = await sign(template, {sk: adminKey.privkey})
 
@@ -289,9 +288,7 @@ export const publishAsGroupAdminPublicly = async (address, template, relays = []
 }
 
 export const publishAsGroupAdminPrivately = async (address, template, relays = []) => {
-  const _relays = ctx.app.router
-    .merge([ctx.app.router.fromRelays(relays), ctx.app.router.WithinContext(address)])
-    .getUrls()
+  const _relays = withinContexts([address], relays).getUrls()
   const adminKey = deriveAdminKeyForGroup(address).get()
   const sharedKey = deriveSharedKeyForGroup(address).get()
   const adminSigner = new Nip01Signer(adminKey.privkey)
@@ -321,7 +318,7 @@ export const publishToGroupsPrivately = async (addresses, template, {anonymous =
   const events = []
   const pubs = []
   for (const address of addresses) {
-    const relays = ctx.app.router.WithinContext(address).getUrls()
+    const relays = withinContexts([address]).getUrls()
     const thisTemplate = addGroupATags(template, [address])
     const sharedKey = deriveSharedKeyForGroup(address).get()
 
@@ -391,9 +388,9 @@ export const publishKeyShares = async (address, pubkeys, template) => {
   for (const pubkey of pubkeys) {
     const relays = ctx.app.router
       .merge([
+        withinContexts([address]),
         ctx.app.router.ForPubkeys([pubkey]),
-        ctx.app.router.WithinContext(address),
-        ctx.app.router.fromRelays(env.PLATFORM_RELAYS),
+        ctx.app.router.FromRelays(env.PLATFORM_RELAYS),
       ])
       .policy(addNoFallbacks)
       .getUrls()
@@ -409,7 +406,7 @@ export const publishKeyShares = async (address, pubkeys, template) => {
 }
 
 export const publishAdminKeyShares = async (address, pubkeys) => {
-  const relays = ctx.app.router.WithinContext(address).getUrls()
+  const relays = withinContexts([address]).getUrls()
   const {privkey} = deriveAdminKeyForGroup(address).get()
   const template = createEvent(24, {
     tags: [
@@ -425,7 +422,7 @@ export const publishAdminKeyShares = async (address, pubkeys) => {
 }
 
 export const publishGroupInvites = async (address, pubkeys, gracePeriod = 0) => {
-  const relays = ctx.app.router.WithinContext(address).getUrls()
+  const relays = withinContexts([address]).getUrls()
   const adminKey = deriveAdminKeyForGroup(address).get()
   const {privkey} = deriveSharedKeyForGroup(address).get()
   const template = createEvent(24, {
@@ -566,7 +563,7 @@ export const publishCommunitiesList = addresses =>
   createAndPublish({
     kind: 10004,
     tags: [...addresses.map(mentionGroup), ...getClientTags()],
-    relays: ctx.app.router.WriteRelays().getUrls(),
+    relays: ctx.app.router.FromUser().getUrls(),
   })
 
 // Deletes
@@ -585,7 +582,7 @@ export const publishDeletion = ({kind, address = null, id = null}) => {
   return createAndPublish({
     tags,
     kind: 5,
-    relays: ctx.app.router.WriteRelays().getUrls(),
+    relays: ctx.app.router.FromUser().getUrls(),
     forcePlatform: false,
   })
 }
@@ -599,7 +596,7 @@ export const deleteEventByAddress = (address: string) =>
 // Profile
 
 export const publishProfile = (profile: Profile, {forcePlatform = false} = {}) => {
-  const relays = withIndexers(ctx.app.router.WriteRelays().getUrls())
+  const relays = withIndexers(ctx.app.router.FromUser().getUrls())
   const template = isPublishedProfile(profile) ? editProfile(profile) : createProfile(profile)
 
   return createAndPublish({...addClientTags(template), relays, forcePlatform})
@@ -623,14 +620,14 @@ export const removeFeedFavorite = async (address: string) => {
   const list = get(userFeedFavorites) || makeList({kind: FEEDS})
   const template = await removeFromList(list, address).reconcile(nip44EncryptToSelf)
 
-  return createAndPublish({...template, relays: ctx.app.router.WriteRelays().getUrls()})
+  return createAndPublish({...template, relays: ctx.app.router.FromUser().getUrls()})
 }
 
 export const addFeedFavorite = async (address: string) => {
   const list = get(userFeedFavorites) || makeList({kind: FEEDS})
   const template = await addToListPublicly(list, ["a", address]).reconcile(nip44EncryptToSelf)
 
-  return createAndPublish({...template, relays: ctx.app.router.WriteRelays().getUrls()})
+  return createAndPublish({...template, relays: ctx.app.router.FromUser().getUrls()})
 }
 
 // Relays
@@ -651,7 +648,7 @@ export const setOutboxPolicies = async (modifyTags: (tags: string[][]) => string
       kind: list.kind,
       content: list.event?.content || "",
       tags: modifyTags(list.publicTags),
-      relays: withIndexers(ctx.app.router.WriteRelays().getUrls()),
+      relays: withIndexers(ctx.app.router.FromUser().getUrls()),
     })
   } else {
     anonymous.update($a => ({...$a, relays: modifyTags($a.relays)}))
@@ -665,7 +662,7 @@ export const setInboxPolicies = async (modifyTags: (tags: string[][]) => string[
     kind: list.kind,
     content: list.event?.content || "",
     tags: modifyTags(list.publicTags),
-    relays: withIndexers(ctx.app.router.WriteRelays().getUrls()),
+    relays: withIndexers(ctx.app.router.FromUser().getUrls()),
   })
 }
 
@@ -760,7 +757,7 @@ export const markAsSeen = async (kind: number, eventsByKey: Record<string, Trust
 
   // Wait until after comparing for equality to add our current timestamp
   const json = JSON.stringify([...tags, ["seen", "*", String(cutoff)]])
-  // const relays = ctx.app.router.WriteRelays().getUrls()
+  // const relays = ctx.app.router.FromUser().getUrls()
   const content = await signer.get().nip44.encrypt(pubkey.get(), json)
 
   await createAndPublish({kind, content, relays: [LOCAL_RELAY_URL]})
@@ -782,7 +779,7 @@ export const sendLegacyMessage = async (channelId: string, content: string) => {
     kind: 4,
     tags: [tagPubkey(recipient), ...getClientTags()],
     content: await signer.get().nip04.encrypt(recipient, content),
-    relays: ctx.app.router.PublishMessage(recipient).getUrls(),
+    relays: ctx.app.router.PubkeyInbox(recipient).getUrls(),
     forcePlatform: false,
   })
 }
@@ -802,7 +799,7 @@ export const sendMessage = async (channelId: string, content: string) => {
 
     await publish({
       event: rumor.wrap,
-      relays: ctx.app.router.PublishMessage(recipient).getUrls(),
+      relays: ctx.app.router.PubkeyInbox(recipient).getUrls(),
       forcePlatform: false,
     })
   }
@@ -887,7 +884,7 @@ export const setAppData = async (d: string, data: any) => {
       kind: 30078,
       tags: [["d", d]],
       content: await signer.get().nip04.encrypt(pubkey, JSON.stringify(data)),
-      relays: ctx.app.router.WriteRelays().getUrls(),
+      relays: ctx.app.router.FromUser().getUrls(),
       forcePlatform: false,
     })
   }
