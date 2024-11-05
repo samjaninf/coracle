@@ -72,9 +72,9 @@ import type {
   StampedEvent,
 } from "@welshman/util"
 import {Nip59, Nip01Signer} from "@welshman/signer"
-import {Executor, Multi, Plex, Local, Relays, publish as basePublish} from "@welshman/net"
+import {Executor, Multi, Local, Relays, publish as basePublish} from "@welshman/net"
 import type {PartialSubscribeRequest} from "@welshman/app"
-import type {PublishRequest} from "@welshman/net"
+import type {PublishRequest, Target} from "@welshman/net"
 import * as Content from "@welshman/content"
 import {withGetter, deriveEvents, deriveEventsMapped, throttled} from "@welshman/store"
 import {
@@ -165,7 +165,6 @@ export const env = {
   BLUR_CONTENT: JSON.parse(import.meta.env.VITE_BLUR_CONTENT) as boolean,
   FORCE_GROUP: import.meta.env.VITE_FORCE_GROUP as string,
   IMGPROXY_URL: import.meta.env.VITE_IMGPROXY_URL as string,
-  MULTIPLEXTR_URL: import.meta.env.VITE_MULTIPLEXTR_URL as string,
   NIP96_URLS: fromCsv(import.meta.env.VITE_NIP96_URLS) as string[],
   ONBOARDING_LISTS: fromCsv(import.meta.env.VITE_ONBOARDING_LISTS) as string[],
   PLATFORM_PUBKEY: import.meta.env.VITE_PLATFORM_PUBKEY as string,
@@ -278,7 +277,6 @@ export const defaultSettings = {
   nip96_urls: env.NIP96_URLS.slice(0, 1),
   imgproxy_url: env.IMGPROXY_URL,
   dufflepud_url: env.DUFFLEPUD_URL,
-  multiplextr_url: env.MULTIPLEXTR_URL,
   platform_zap_split: env.PLATFORM_ZAP_SPLIT,
 }
 
@@ -967,26 +965,9 @@ export const addRepostFilters = (filters: Filter[]) =>
   })
 
 export const getExecutor = (urls: string[]) => {
-  const muxUrl = getSetting("multiplextr_url")
   const [localUrls, remoteUrls] = partition(equals(LOCAL_RELAY_URL), urls)
 
-  // Try to use our multiplexer, but if it fails to connect fall back to relays. If
-  // we're only connecting to a single relay, just do it directly, unless we already
-  // have a connection to the multiplexer open, in which case we're probably doing
-  // AUTH with a single relay.
-  let target
-
-  if (muxUrl && remoteUrls.length > 0) {
-    const connection = ctx.net.pool.get(muxUrl)
-
-    if (connection.socket.isOpen()) {
-      target = new Plex(remoteUrls, connection)
-    }
-  }
-
-  if (!target) {
-    target = new Relays(remoteUrls.map(url => ctx.net.pool.get(url)))
-  }
+  let target: Target = new Relays(remoteUrls.map(url => ctx.net.pool.get(url)))
 
   if (localUrls.length > 0) {
     target = new Multi([target, new Local(relay)])

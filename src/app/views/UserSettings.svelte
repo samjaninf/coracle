@@ -112,19 +112,6 @@
         >.
       </p>
     </Field>
-    <Field label="Multiplextr URL">
-      <Input bind:value={values.multiplextr_url}>
-        <i slot="before" class="fa-solid fa-code-merge" />
-      </Input>
-      <p slot="info">
-        Enter a custom proxy server for multiplexing relay connections. This can drastically improve
-        resource usage, but has some privacy trade-offs. Leave blank to connect to relays directly.
-        You can find the source code <Anchor
-          underline
-          href="https://github.com/coracle-social/multiplextr">here</Anchor
-        >.
-      </p>
-    </Field>
     <FieldInline label="Report errors and analytics">
       <Toggle bind:value={values.report_analytics} />
       <p slot="info">
