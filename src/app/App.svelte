@@ -455,10 +455,11 @@
 
         if (relay?.stats) {
           const lastActivity = max([
+            relay.stats.last_open,
             relay.stats.last_publish,
             relay.stats.last_request,
             relay.stats.last_event,
-          ])
+         ])
 
           if (lastActivity < ago(30)) {
             ctx.net.pool.remove(url)
