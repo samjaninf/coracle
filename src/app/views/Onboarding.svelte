@@ -1,117 +1,66 @@
 <script lang="ts">
-  import {onMount} from "svelte"
-  import {uniq, nth} from "@welshman/lib"
-  import {getPubkeyTagValues, getAddress, Address, getIdFilters} from "@welshman/util"
-  import {session, userRelaySelections, getWriteRelayUrls} from "@welshman/app"
+  import {isMobile} from "src/util/html"
+  import {appName} from "src/partials/state"
+  import Anchor from "src/partials/Anchor.svelte"
+  import Media from "src/partials/Media.svelte"
+  import Modal from "src/partials/Modal.svelte"
   import FlexColumn from "src/partials/FlexColumn.svelte"
-  import OnboardingIntro from "src/app/views/OnboardingIntro.svelte"
-  import OnboardingKeys from "src/app/views/OnboardingKeys.svelte"
-  import OnboardingProfile from "src/app/views/OnboardingProfile.svelte"
-  import OnboardingFollows from "src/app/views/OnboardingFollows.svelte"
-  import OnboardingNote from "src/app/views/OnboardingNote.svelte"
-  import {
-    env,
-    load,
-    anonymous,
-    loadPubkeys,
-    requestRelayAccess,
-    listenForNotifications,
-    broadcastUserData,
-  } from "src/engine"
-  import {router} from "src/app/util/router"
-  import {setChecked} from "src/engine"
 
-  export let stage = "intro"
-  export let invite = null
+  export let invite
 
-  let state = {
-    pubkey: "",
-    username: "",
-    profile: {
-      name: "",
-      about: "",
-      picture: "",
-    },
-    follows: $session ? [] : $anonymous.follows.map(nth(1)),
-    relays:
-      $anonymous.relays.length === 0
-        ? env.DEFAULT_RELAYS.map(url => ["r", url])
-        : $anonymous.relays,
-    onboardingLists: [],
+  let media
+
+  const ac = window.location.origin
+  const at = isMobile ? "android" : "web"
+  const nstart = `https://start.njump.me/?an=Coracle&at=${at}&ac=${ac}`
+
+  const openMedia = url => {
+    media = url
   }
 
-  if (Array.isArray(invite?.people)) {
-    state.follows = [...state.follows, ...invite.people]
+  const closeMedia = () => {
+    media = null
   }
-
-  if (invite?.relays) {
-    state.relays = [...state.relays, ...invite.relays.map(url => ["r", url])]
-  }
-
-  const setStage = s => {
-    stage = s
-  }
-
-  const signup = async () => {
-    router.at("notes").push()
-
-    // Immediately request access to any relays with a claim
-    for (const {url, claim} of invite?.parsedRelays || []) {
-      if (claim) {
-        const pub = await requestRelayAccess(url, claim)
-
-        await pub.result
-      }
-    }
-
-    // Make sure our profile gets to the right relays
-    broadcastUserData(getWriteRelayUrls($userRelaySelections))
-
-    // Start our notifications listener
-    listenForNotifications()
-    setChecked("*")
-  }
-
-  onMount(async () => {
-    const listOwners = uniq(env.ONBOARDING_LISTS.map(a => Address.from(a).pubkey))
-
-    // Prime our database with our default follows and list owners
-    loadPubkeys([...env.DEFAULT_FOLLOWS, ...listOwners])
-
-    // Load our onboarding lists
-    load({
-      filters: getIdFilters(env.ONBOARDING_LISTS),
-      onEvent: e => {
-        if (!state.onboardingLists.find(l => getAddress(l) === getAddress(e))) {
-          state.onboardingLists = state.onboardingLists.concat(e)
-        }
-
-        loadPubkeys(getPubkeyTagValues(e.tags))
-      },
-    })
-  })
 </script>
 
 <FlexColumn class="mt-8">
-  {#key stage}
-    {#if stage === "intro"}
-      <OnboardingIntro {setStage} />
-    {:else if stage === "keys"}
-      <OnboardingKeys {setStage} bind:state />
-    {:else if stage === "profile"}
-      <OnboardingProfile {setStage} bind:state />
-    {:else if stage === "follows"}
-      <OnboardingFollows {setStage} bind:state />
-    {:else if stage === "note"}
-      <OnboardingNote {setStage} {signup} />
-    {/if}
-  {/key}
-  <div class="m-auto flex gap-2">
-    {#each ["intro", "keys", "profile", "follows", "note"] as s}
-      <div
-        class="h-2 w-2 rounded-full"
-        class:bg-neutral-300={s === stage}
-        class:bg-neutral-500={s !== stage} />
-    {/each}
+  <div class="flex gap-3">
+    <p class="text-2xl font-bold">New to Nostr?</p>
   </div>
+  <p class="sm:hidden">
+    Take a moment to get acquainted with {appName} — or skip straight to account setup.
+  </p>
+  <p class="hidden sm:block">
+    Learn about the protocol at your own pace by watching one of our tutorial videos.
+  </p>
+  <div class="flex flex-col gap-2 sm:flex-row">
+    <Anchor
+      class="relative flex aspect-[4/3] items-center justify-center overflow-hidden rounded-xl p-8 text-center sm:w-1/2"
+      on:click={() =>
+        openMedia("https://coracle.us-southeast-1.linodeobjects.com/coracle-30s.mp4")}>
+      <div
+        class="absolute inset-0 opacity-75 transition-opacity hover:opacity-100"
+        style="background: url('/images/jakob-owens-8tyCOqTqdqg-unsplash.png'" />
+      <p class="staatliches relative text-5xl text-white">Nostr in 30 seconds</p>
+    </Anchor>
+    <Anchor
+      class="relative hidden aspect-[4/3] items-center justify-center overflow-hidden rounded-xl p-8 text-center sm:flex sm:w-1/2"
+      on:click={() =>
+        openMedia("https://coracle.us-southeast-1.linodeobjects.com/coracle-deep-dive.mp4")}>
+      <div
+        class="absolute inset-0 opacity-75 transition-opacity hover:opacity-100"
+        style="background: url('/images/sean-105m46GatAg-unsplash.png'" />
+      <p class="staatliches relative text-5xl text-white">{appName} deep dive</p>
+    </Anchor>
+  </div>
+  <p>
+    When you’re ready, click below and we’ll guide you through the process of creating an account.
+  </p>
+  <Anchor externalHref={nstart} button accent class="text-center">Let's go!</Anchor>
 </FlexColumn>
+
+{#if media}
+  <Modal onEscape={closeMedia}>
+    <Media url={media || ""} />
+  </Modal>
+{/if}
