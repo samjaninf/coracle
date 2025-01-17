@@ -24,14 +24,10 @@
 </script>
 
 <FlexColumn class="mt-8">
-  <div class="flex gap-3">
-    <p class="text-2xl font-bold">New to Nostr?</p>
-  </div>
-  <p class="sm:hidden">
-    Take a moment to get acquainted with {appName} — or skip straight to account setup.
-  </p>
-  <p class="hidden sm:block">
-    Learn about the protocol at your own pace by watching one of our tutorial videos.
+  <h1 class="text-center text-3xl">Sign up with Nostr</h1>
+  <p class="m-auto max-w-sm text-center">
+    {appName} is built using the
+    <Anchor underline>nostr protocol</Anchor>, which allows you to own your social identity.
   </p>
   <div class="flex flex-col gap-2 sm:flex-row">
     <Anchor
@@ -54,7 +50,8 @@
     </Anchor>
   </div>
   <p>
-    When you’re ready, click below and we’ll guide you through the process of creating an account.
+    When you’re ready, click below and we’ll send you to <Anchor externalHref={nstart} underline
+      >Nstart</Anchor> to guide you through the process of creating an account.
   </p>
   <Anchor externalHref={nstart} button accent class="text-center">Let's go!</Anchor>
 </FlexColumn>
