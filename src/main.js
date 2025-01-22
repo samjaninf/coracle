@@ -1,24 +1,39 @@
 import "src/app.css"
 import * as Sentry from "@sentry/browser"
 import {addSession} from "@welshman/app"
-import {getPubkey} from "@welshman/signer"
+import {getPubkey, makeSecret, Nip46Broker} from "@welshman/signer"
 import {App as CapacitorApp} from "@capacitor/app"
 import {nsecDecode} from "src/util/nostr"
 import {router} from "src/app/util"
 import App from "src/app/App.svelte"
 import {installPrompt} from "src/partials/state"
+import {loginWithNip46} from "src/engine"
 
 // Nstart login - hash is replaced somewhere else, maybe router?
 if (window.location.hash?.startsWith("#nostr-login")) {
   const params = new URLSearchParams(window.location.hash.slice(1))
+  const login = params.get("nostr-login")
+
+  let success = false
 
   try {
-    const secret = nsecDecode(params.get("nostr-login"))
+    if (login.startsWith("bunker://")) {
+      success = await loginWithNip46({
+        clientSecret: makeSecret(),
+        ...Nip46Broker.parseBunkerUrl(login),
+      })
+    } else {
+      const secret = nsecDecode(login)
 
-    addSession({method: "nip01", secret, pubkey: getPubkey(secret)})
-    setTimeout(() => router.at("/signup/welcome").open(), 300)
+      addSession({method: "nip01", secret, pubkey: getPubkey(secret)})
+      success = true
+    }
   } catch (e) {
     console.error(e)
+  }
+
+  if (success) {
+    setTimeout(() => router.at("/signup/welcome").open(), 300)
   }
 }
 
